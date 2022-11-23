@@ -13,21 +13,23 @@ int main(int argc, char** argv) {
     int fd = open(argv[1], O_RDWR);
     if(fd < 0) perror("File error");
 
-    int d;
-    int m;
+    unsigned int nsid;
+    if(nvme_get_nsid(fd, &nsid) < 0) perror("nsid error");
+    std::cout << "Namespace is: " << nsid << '\n';
+
     struct nvme_passthru_cmd cmd = {
         0x80,   // op code
         0,      // flags (unused)
         0,      // reserved (unused)
-        1,      // namespace (default 1)
+        nsid,      // namespace (default 1)
 
         0,      // user cdwd2
         0,      // user cdwd3
 
         0,      // metadata buffer
-        reinterpret_cast<uint64_t>(&d),      // data buffer
+        0,      // data buffer
         0,      // metadata length
-        sizeof(d),      // data length
+        0,      // data length
 
         0,      // user cdwd10
         0,      // user cdwd11
