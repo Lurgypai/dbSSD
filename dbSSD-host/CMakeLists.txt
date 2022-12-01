@@ -1,0 +1,8 @@
+add_executable(dbSSD-host "dbSSD-host.cpp" "table.cpp")
+
+add_custom_command(
+    TARGET dbSSD-host POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/testTable.json
+            ${CMAKE_CURRENT_BINARY_DIR}/testTable.json
+)

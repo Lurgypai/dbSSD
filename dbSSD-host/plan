@@ -1,0 +1,3 @@
+The host program tracks the tables, and their row format
+we need to be able to make a table, with a row format
+write those rows out 
