@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ranges>
 #include <string>
 #include <sstream>
 #include <unordered_map>
@@ -68,23 +69,9 @@ int commandInsertRow(const std::vector<std::string>& command) {
         return 1;
     }
 
-    int col = 0;
-    for(const auto& val : targetTable.getColumns()) {
-        switch(val) {
-            case Table::ColType::integer: {
-                std::int64_t elem = std::stoi(command[col + 2]);
-                targetTable.putElement(targetTable.currRow, col, elem);
-                } break;
+    std::vector<std::string> rowVals{command.begin() + 2, command.end()};
+    targetTable.insert(rowVals);
 
-            case Table::ColType::char64: {
-               targetTable.putElement(targetTable.currRow, col, command[col + 2]);
-               } break;
-        } 
-        ++col;
-    }
-
-    ++targetTable.currRow;
-    
     return 0;
 }
 

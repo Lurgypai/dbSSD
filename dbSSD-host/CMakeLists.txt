@@ -6,3 +6,5 @@ add_custom_command(
             ${CMAKE_CURRENT_SOURCE_DIR}/testTable.json
             ${CMAKE_CURRENT_BINARY_DIR}/testTable.json
 )
+
+set_property(TARGET dbSSD-host PROPERTY CXX_STANDARD 20)

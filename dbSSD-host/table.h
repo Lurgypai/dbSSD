@@ -15,19 +15,25 @@ public:
         integer,
         char64,
     };
+
+    struct Column {
+        std::string name;
+        ColType type;
+    };
+
     Table();
     int getId() const;
     void loadColumns(const nlohmann::json& schemaJson);
     int getColumnCount() const;
     const std::vector<Table::ColType>& getColumns() const;
 
+    void insert(const std::vector<std::string>& rowVals);
     template<typename T>
     void putElement(std::uint64_t row, std::uint64_t col, const T& data);
 
     std::string toString() const;
     std::string rowToString(std::uint64_t row) const;
 
-    int currRow;
 private:
 
     template<typename T>
@@ -37,10 +43,12 @@ private:
     void writeElem(std::size_t offset, const T& elem);
 
     static int currId;
+    static unsigned long long currBlock;
+
     int id;
-    std::map<std::string, ColType> columnMap;
-    std::vector<ColType> columnVec;
+    std::vector<Column> columnVec;
     std::vector<char> data;
+    int currRow;
 };
 
 template<typename T>
@@ -55,8 +63,8 @@ void Table::putElement_(std::uint64_t row, std::uint64_t col, const T& elem) {
         throw std::exception{};
     }
 
-    std::size_t rowWidth = std::accumulate(columnVec.begin(), columnVec.end(), 0, [](std::size_t currVal, Table::ColType currCol) {
-                switch(currCol) {
+    std::size_t rowWidth = std::accumulate(columnVec.begin(), columnVec.end(), 0, [](std::size_t currVal, const Column& currCol) {
+                switch(currCol.type) {
                 case Table::ColType::integer:
                     return currVal + sizeof(std::int64_t);
                 case Table::ColType::char64:
@@ -65,8 +73,8 @@ void Table::putElement_(std::uint64_t row, std::uint64_t col, const T& elem) {
             });
     
     std::size_t rowOffset = std::accumulate(columnVec.begin(), columnVec.begin() + col, 0,
-            [](std::size_t currVal, Table::ColType currCol) {
-                switch(currCol) {
+            [](std::size_t currVal, Column currCol) {
+                switch(currCol.type) {
                 case Table::ColType::integer:
                     return currVal + sizeof(std::int64_t);
                 case Table::ColType::char64:
