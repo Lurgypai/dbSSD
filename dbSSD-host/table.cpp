@@ -78,6 +78,12 @@ void Table::insert(const std::vector<std::string>& colVals) {
     }
 
     ++currRow;
+
+
+}
+
+std::vector<char>& Table::getData() {
+    return data;
 }
 
 std::string Table::toString() const {

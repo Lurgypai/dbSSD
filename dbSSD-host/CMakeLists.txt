@@ -1,4 +1,4 @@
-add_executable(dbSSD-host "dbSSD-host.cpp" "table.cpp")
+add_executable(dbSSD-host "dbSSD-host.cpp" "table.cpp" "NVMEDevice.cpp")
 
 add_custom_command(
     TARGET dbSSD-host POST_BUILD
@@ -8,3 +8,4 @@ add_custom_command(
 )
 
 set_property(TARGET dbSSD-host PROPERTY CXX_STANDARD 20)
+target_link_libraries(dbSSD-host "nvme")

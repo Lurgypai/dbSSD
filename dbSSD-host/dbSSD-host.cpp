@@ -10,6 +10,7 @@
 #include "json.hpp"
 
 #include "table.h"
+#include "NVMEDevice.h"
 
 using CommandFunction = std::function<int(std::vector<std::string>)>;
 using CommandMap = std::unordered_map<std::string, CommandFunction>;
@@ -18,6 +19,7 @@ using nlohmann::json;
 
 static CommandMap commandFunctions;
 static TableMap tables;
+static NVMEDevice device;
 
 std::vector<std::string> split(std::istream& stream, char c = '\n') {
 	std::vector<std::string> lines{};
@@ -61,6 +63,11 @@ int commandInsertRow(const std::vector<std::string>& command) {
         return 1;
     }
 
+    if(!device.isOpen()) { 
+        std::cout << "Haven't opened an NVME device!\n";
+        return 1;
+    }
+
     int tableId = std::stoi(command[1]);
     Table& targetTable = tables.at(tableId);
 
@@ -71,7 +78,27 @@ int commandInsertRow(const std::vector<std::string>& command) {
 
     std::vector<std::string> rowVals{command.begin() + 2, command.end()};
     targetTable.insert(rowVals);
+    device.write(targetTable.getData().data(), targetTable.getData().size(), 0, 0);
 
+    return 0;
+}
+
+int commandLoadTablePage(const std::vector<std::string>& command) {
+    if(command.size() != 3) {
+        std::cout << "Invalid command length\n";
+        return 1;
+    }
+
+    if(!device.isOpen()) { 
+        std::cout << "Haven't opened an NVME device!\n";
+        return 1;
+    }
+    
+    int tableId = std::stoi(command[1]);
+    int slb = std::stoi(command[2]);
+
+    auto& targetTable = tables.at(tableId);
+    device.read(targetTable.getData().data(), targetTable.getData().size(), slb, 0);
     return 0;
 }
 
@@ -93,12 +120,24 @@ int commandPrintRow(const std::vector<std::string>& command) {
     return 0;
 }
 
+int commandOpenDevice(const std::vector<std::string>& command) {
+    if(command.size() != 2) {
+        std::cout << "Invalid command length\n";
+    }
+
+    device.load(command[1]);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     commandFunctions.emplace("exit", commandExit);
     commandFunctions.emplace("create-table", commandCreateTable);
     commandFunctions.emplace("print-tables", commandPrintTables);
     commandFunctions.emplace("insert-row", commandInsertRow);
     commandFunctions.emplace("print-row", commandPrintRow);
+    commandFunctions.emplace("open-device", commandOpenDevice);
+    commandFunctions.emplace("load-table-page", commandLoadTablePage);
+
     std::cout << "Welcome to dbSSD-host.\n";
     std::string line;
     while(std::getline(std::cin, line)) {

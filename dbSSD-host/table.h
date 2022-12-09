@@ -31,6 +31,8 @@ public:
     template<typename T>
     void putElement(std::uint64_t row, std::uint64_t col, const T& data);
 
+    std::vector<char>& getData();
+
     std::string toString() const;
     std::string rowToString(std::uint64_t row) const;
 
