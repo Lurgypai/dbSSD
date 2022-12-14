@@ -83,7 +83,7 @@ void Table::putElement_(std::uint64_t row, std::uint64_t col, const T& elem) {
                 }
             });
 
-    std::cout << "rowWidth: " << rowWidth << ", rowOffset: " << rowOffset << '\n';
+    // std::cout << "rowWidth: " << rowWidth << ", rowOffset: " << rowOffset << '\n';
 
     std::size_t offset = rowWidth * row + rowOffset;
 

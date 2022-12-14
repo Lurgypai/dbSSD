@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iostream>
 #include <ranges>
 #include <string>
@@ -6,6 +7,7 @@
 #include <functional>
 #include <vector>
 #include <fstream>
+#include <chrono>
 
 #include "json.hpp"
 
@@ -39,6 +41,22 @@ int commandExit(const std::vector<std::string>& command) {
     std::cout << "Exiting...\n";
     exit(0);
     return 0; // redundant
+}
+
+int commandTestRead(const std::vector<std::string>& command) {
+    std::vector<char> data(16384, 5);
+    device.read(data.data(), data.size(), 0, 3);
+
+    for(int i = 0; i != 4; ++i) {
+        int startOffset = i * 4096;
+        for(int j = 0; j != 4096; ++j) {
+            auto c = data[startOffset + j];
+            if(c == 0) std::cout << '-';
+            else std::cout << static_cast<unsigned int>(c);
+        }
+        std::cout << "--------------------\n";
+    }
+    return 0;
 }
 
 int commandCreateTable(const std::vector<std::string>& command) {
@@ -157,6 +175,8 @@ int commandPrintDeviceTables(const std::vector<std::string>& command) {
     return 0;
 }
 
+using namespace std::chrono;
+
 int commandJoin(const std::vector<std::string>& command) {
     if(command.size() != 3) {
         std::cout << "Invalid command length\n";
@@ -167,55 +187,78 @@ int commandJoin(const std::vector<std::string>& command) {
     std::uint32_t table2 = std::stoi(command[2]);
     std::cout << "Joining tables " << table1 << " and " << table2 << '\n';
 
-    std::vector<char> data;
-    data.resize(16384); // page size
-
-    device.resetTableIter();
-    device.join(data.data(), data.size(), table1, table2);
-
-    std::cout << "Join complete:\n";
+    std::vector<char> data(16384, 5);
 
     Table& targetTable1 = tables.at(table1);
     Table& targetTable2 = tables.at(table2); 
 
-  
-    // print a row
-    size_t offset = 0; 
-    for(auto&& [_, type] : targetTable1.getColumns()) {
-        if(type == Table::ColType::integer) {
-            std::int64_t val;
-            std::memcpy(&val, data.data() + offset, sizeof(val));
-            std::cout << val << ", ";
-            offset += sizeof(val);
+    steady_clock::time_point begin = steady_clock::now(); 
+    
+    device.resetTableIter();
+    for(;;) {
+        device.join(data.data(), data.size(), table1, table2);
+
+        // std::cout << '\n';
+
+        std::uint16_t flags;
+        std::memcpy(&flags, data.data() + 16384 - sizeof(flags), sizeof(flags));
+
+        std::uint16_t mask = 3 << 14; //11000000 00000000
+        std::uint16_t size = (~mask) & flags; //00111111 11111111
+        std::uint16_t isRemaining = mask & flags;
+        // std::cout << "Page has " << size << " bytes of data. Remainging flag set? " << isRemaining << '\n';
+
+        std::uint64_t newRowWidth = targetTable1.getWidth() + targetTable2.getWidth() - sizeof(std::int64_t);
+        int rowCount = size / newRowWidth;
+
+        // std::cout << "The new table has a width of " << newRowWidth << ", there are " << rowCount << " rows in the returned data\n";
+
+        size_t offset = 0; 
+        for(int row = 0; row != rowCount; ++row) {
+            for(auto&& [_, type] : targetTable1.getColumns()) {
+                if(type == Table::ColType::integer) {
+                    std::int64_t val;
+                    std::memcpy(&val, data.data() + offset, sizeof(val));
+                    // std::cout << val << ", ";
+                    offset += sizeof(val);
+                }
+                if(type == Table::ColType::char64) {
+                    std::string val;
+                    val.resize(64);
+                    std::memcpy(val.data(), data.data() + offset, 64);
+                    // std::cout << val << ", ";
+                    offset += 64;
+                }
+            }
+
+            // skip key
+            auto& table2Columns = targetTable2.getColumns();
+            for(int i = 1; i != table2Columns.size(); ++i) {
+                const auto& type = table2Columns[i].type;
+                if(type == Table::ColType::integer) {
+                    std::int64_t val;
+                    std::memcpy(&val, data.data() + offset, sizeof(val));
+                    // std::cout << val << ", ";
+                    offset += sizeof(val);
+                }
+                if(type == Table::ColType::char64) {
+                    std::string val;
+                    val.resize(64);
+                    std::memcpy(val.data(), data.data() + offset, 64);
+                    // std::cout << val << ", ";
+                    offset += 64;
+                }
+            }
+            // std::cout << '\n';
         }
-        if(type == Table::ColType::char64) {
-            std::string val;
-            val.resize(64);
-            std::memcpy(val.data(), data.data() + offset, 64);
-            std::cout << val << ", ";
-            offset += 64;
-        }
+
+        // no data left
+        if(!isRemaining) break;
     }
 
-    // skip key
-    auto& table2Columns = targetTable2.getColumns();
-    for(int i = 1; i != table2Columns.size(); ++i) {
-        const auto& type = table2Columns[i].type;
-        if(type == Table::ColType::integer) {
-            std::int64_t val;
-            std::memcpy(&val, data.data() + offset, sizeof(val));
-            std::cout << val << ", ";
-            offset += sizeof(val);
-        }
-        if(type == Table::ColType::char64) {
-            std::string val;
-            val.resize(64);
-            std::memcpy(val.data(), data.data() + offset, 64);
-            std::cout << val << ", ";
-            offset += 64;
-        }
-    }
-    std::cout << '\n';
+    steady_clock::time_point end = steady_clock::now();
+
+    std::cout << "Join time (ms): " << duration_cast<milliseconds>(end - begin).count() << '\n';
     
     return 0;
 }
@@ -231,6 +274,7 @@ int main(int argc, char** argv) {
     commandFunctions.emplace("help", commandHelp);
     commandFunctions.emplace("exit", commandExit);
     commandFunctions.emplace("create-table", commandCreateTable);
+    commandFunctions.emplace("test-read", commandTestRead);
     commandFunctions.emplace("print-tables", commandPrintTables);
     commandFunctions.emplace("insert-row", commandInsertRow);
     commandFunctions.emplace("print-row", commandPrintRow);

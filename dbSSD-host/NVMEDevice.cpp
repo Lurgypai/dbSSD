@@ -62,7 +62,7 @@ int NVMEDevice::write(const char* data, std::uint32_t length, std::uint64_t slb,
 
 int NVMEDevice::read(char* data, std::uint32_t length, std::uint64_t slb, std::uint16_t nlb) {
     struct nvme_passthru_cmd cmd = {
-        0x02,   // op code
+        0x86,   // op code
         0,      // flags (unused)
         0,      // reserved (unused)
         nsid,      // namespace (default 1)
@@ -201,11 +201,11 @@ int NVMEDevice::join(char* data, std::uint32_t length, std::uint32_t table1, std
         0,      // metadata length
         length,      // data length
 
-        table1,      // user cdwd10
-        table2,      // user cdwd11
-        0,      // user cdwd12
-        0,      // user cdwd13
-        0,      // user cdwd14
+        0,      // user cdwd10
+        0,      // user cdwd11
+        3,      // user cdwd12
+        table1,      // user cdwd13
+        table2,      // user cdwd14
         0,      // user cdwd15
 
         0,      // timeout, in ms, if non-zero does a timeout
