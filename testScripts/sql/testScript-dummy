@@ -1,0 +1,37 @@
+\timing on
+\echo 'Generating tables.'
+CREATE TABLE IF NOT EXISTS table3 (
+<table-layout>
+);
+
+CREATE TABLE IF NOT EXISTS table4 (
+<table-layout>
+);
+
+CREATE INDEX IF NOT EXISTS idx_hash3 ON table3 USING HASH (id);
+CREATE INDEX IF NOT EXISTS idx_hash4 ON table4 USING HASH (id);
+
+\echo 'Inserting data...'
+
+DO $$
+BEGIN
+FOR n IN 1..<row-count>
+	LOOP
+    <insert-table3>
+	end loop;
+end $$;
+
+
+DO $$
+BEGIN
+FOR n IN 1..<row-count>
+	LOOP
+    <insert-table4>
+	end loop;
+end $$;
+
+\echo "Doing join..."
+SELECT * FROM table3 JOIN table4 on table3.id = table4.id;
+
+drop table table3;
+drop table table4;

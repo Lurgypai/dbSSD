@@ -113,7 +113,7 @@ void Table::insert(const std::vector<std::string>& colVals, NVMEDevice& device) 
 
     ++currRow;
     if(currRow == maxRows) {
-        std::cout << "Table " << id << " filled its block, destaging to slb " << currBlock << '\n';
+        // std::cout << "Table " << id << " filled its block, destaging to slb " << currBlock << '\n';
         currBlock += 4;
         backingBlock = currBlock;
         currRow = 0;

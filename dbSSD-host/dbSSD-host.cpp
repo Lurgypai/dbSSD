@@ -113,7 +113,7 @@ int commandInsertRow(const std::vector<std::string>& command) {
     std::vector<std::string> rowVals{command.begin() + 2, command.end()};
     targetTable.insert(rowVals, device);
 
-    std::cout << "Inserted row into table " << tableId << '\n';
+    // std::cout << "Inserted row into table " << tableId << '\n';
 
     return 0;
 }
@@ -178,10 +178,11 @@ int commandPrintDeviceTables(const std::vector<std::string>& command) {
 using namespace std::chrono;
 
 int commandJoin(const std::vector<std::string>& command) {
-    if(command.size() != 3) {
+    if(command.size() < 3 || command.size() > 4) {
         std::cout << "Invalid command length\n";
         return 1;
     }
+
 
     std::uint32_t table1 = std::stoi(command[1]);
     std::uint32_t table2 = std::stoi(command[2]);
@@ -191,6 +192,18 @@ int commandJoin(const std::vector<std::string>& command) {
 
     Table& targetTable1 = tables.at(table1);
     Table& targetTable2 = tables.at(table2); 
+
+    bool doFileIo = false;
+    std::ofstream outFile{};
+    if(command.size() == 4) {
+        doFileIo = true;
+        outFile.open(command[3], std::ios::out | std::ios::binary);
+        int i = 0;
+        for(auto&& [name, _] : targetTable1.getColumns()) {
+            outFile << name << ", ";
+        }
+        outFile << '\n';
+    }
 
     steady_clock::time_point begin = steady_clock::now(); 
     
@@ -219,14 +232,14 @@ int commandJoin(const std::vector<std::string>& command) {
                 if(type == Table::ColType::integer) {
                     std::int64_t val;
                     std::memcpy(&val, data.data() + offset, sizeof(val));
-                    // std::cout << val << ", ";
+                    if(doFileIo) outFile << val << ", ";
                     offset += sizeof(val);
                 }
                 if(type == Table::ColType::char64) {
                     std::string val;
                     val.resize(64);
                     std::memcpy(val.data(), data.data() + offset, 64);
-                    // std::cout << val << ", ";
+                    if(doFileIo) outFile << val << ", ";
                     offset += 64;
                 }
             }
@@ -238,18 +251,18 @@ int commandJoin(const std::vector<std::string>& command) {
                 if(type == Table::ColType::integer) {
                     std::int64_t val;
                     std::memcpy(&val, data.data() + offset, sizeof(val));
-                    // std::cout << val << ", ";
+                    if(doFileIo) outFile << val << ", ";
                     offset += sizeof(val);
                 }
                 if(type == Table::ColType::char64) {
                     std::string val;
                     val.resize(64);
                     std::memcpy(val.data(), data.data() + offset, 64);
-                    // std::cout << val << ", ";
+                    if(doFileIo) outFile << val << ", ";
                     offset += 64;
                 }
             }
-            // std::cout << '\n';
+            if(doFileIo) outFile << '\n';
         }
 
         // no data left
